@@ -1,4 +1,6 @@
-# aout
+# aout library
+
+[![CMake](https://github.com/mseminatore/aout/actions/workflows/cmake.yml/badge.svg)](https://github.com/mseminatore/aout/actions/workflows/cmake.yml)
 
 A C library for reading, writing, and manipulating Unix a.out object files.
 
