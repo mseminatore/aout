@@ -1,0 +1,6 @@
+[submodule "testy"]
+	path = testy
+	url = https://github.com/mseminatore/testy.git
+[submodule "hash"]
+	path = hash
+	url = https://github.com/mseminatore/hash.git
