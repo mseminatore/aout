@@ -1,6 +1,6 @@
 # aout
 
-A C/C++ library for reading, writing, and manipulating Unix a.out object files.
+A C library for reading, writing, and manipulating Unix a.out object files.
 
 ## Features
 
@@ -13,18 +13,20 @@ A C/C++ library for reading, writing, and manipulating Unix a.out object files.
 
 ## Building
 
-### C Version
+### Using Make
 
 ```bash
 make
 make test
 ```
 
-### Running Tests
+### Using CMake
 
 ```bash
-make test
-```
+mkdir build
+cd build
+cmake ..
+make
 
 ## Usage
 
@@ -56,18 +58,13 @@ int main(void)
     aout_free(obj);
     return 0;
 }
-```
-
-### C++ API Example
-
-See `ref/aout.h` and `ref/aout.cpp` for the C++ reference implementation.
+``e `ref/aout.h` and `ref/aout.cpp` for the C++ reference implementation.
 
 ## Project Structure
 
 - `aout.h`, `aout.c` - C implementation
 - `ref/` - C++ reference implementation  
 - `hash/` - Hash table submodule (used for symbol lookup)
-- `testy/` - Testing framework submodule
 - `test_aout.c` - Test suite
 
 ## License

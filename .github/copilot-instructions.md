@@ -1,16 +1,12 @@
 # AI Coding Agent Instructions for aout
 
 ## Project Overview
-**aout** is a C/C++ library for reading, writing, and manipulating Unix a.out object files. The core functionality handles binary object file formats including headers, segment data (text/data/BSS), symbol tables, string tables, and relocation entries.
-
-**Two Implementations:**
-- **C version** (`aout.h`, `aout.c`) - Primary implementation using hash tables and dynamic arrays
-- **C++ reference** (`ref/aout.h`, `ref/aout.cpp`) - Reference implementation using STL containers
+**aout** is a C library for reading, writing, and manipulating Unix a.out object files. The core functionality handles binary object file formats including headers, segment data (text/data/BSS), symbol tables, string tables, and relocation entries.
 
 ## Architecture & Core Components
 
-### File Format Structure (`ref/aout.h`, `ref/aout.cpp`)
-- **AOUT_HEADER**: 32-byte header containing magic number, segment sizes, entry point, and relocation sizes
+### File Format Structure
+- **aout_header_t**: 32-byte header containing magic number, segment sizes, entry point, and relocation sizes
 - **Three Segments**: 
   - TEXT (code)
   - DATA (initialized data)
@@ -80,7 +76,9 @@
 - Automatic failure tracking and reporting
 
 ## Build & Testing
-- C++11 compatible (standard includes: string, vector, map)
+- C99 compatible implementation
 - Platform note: `_CRT_SECURE_NO_WARNINGS` defined for MSVC; uses FILE* for binary I/O
-- No external dependencies beyond STL
+- No external dependencies beyond submodules
 - Submodules provide optional capabilities: hash table library and testing framework
+- **Build with Make**: `make && make test`
+- **Build with CMake**: `mkdir build && cd build && cmake .. && make && ctest`
