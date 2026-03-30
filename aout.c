@@ -685,6 +685,24 @@ void aout_concat(aout_object_file_t *lhs, aout_object_file_t *rhs)
 
 // === Relocation ===
 
+/* Read up to 4 bytes little-endian from buf */
+static uint32_t read_le(const uint8_t *buf, int bytes)
+{
+	uint32_t val = 0;
+	int b;
+	for (b = 0; b < bytes; b++)
+		val |= ((uint32_t)buf[b]) << (8 * b);
+	return val;
+}
+
+/* Write up to 4 bytes little-endian to buf */
+static void write_le(uint8_t *buf, uint32_t val, int bytes)
+{
+	int b;
+	for (b = 0; b < bytes; b++)
+		buf[b] = (val >> (8 * b)) & 0xFF;
+}
+
 int aout_relocate(aout_object_file_t *obj, aout_object_file_t **modules, size_t module_count)
 {
 	size_t i, j;
@@ -692,15 +710,15 @@ int aout_relocate(aout_object_file_t *obj, aout_object_file_t **modules, size_t 
 	// Process text segment relocations
 	for (i = 0; i < obj->text_relocs->size; i++)
 	{
+		aout_relocation_entry_t re = obj->text_relocs->data[i];
+		int patch_size = 1 << re.length;  /* 1, 2, 4, or 8 bytes */
 		int symbol_found = 0;
 		
-		if (obj->text_relocs->data[i].external)
+		if (re.external)
 		{
-			const char *name = obj->symbol_table->data[obj->text_relocs->data[i].index].name;
-			aout_symbol_t sym = obj->symbol_table->data[obj->text_relocs->data[i].index].symbol;
-			assert(sym.type & AOUT_SET_UNDEFINED);
+			const char *name = obj->symbol_table->data[re.index].name;
 			
-			// Find external symbol in modules
+			// Find external symbol in modules and patch
 			for (j = 0; j < module_count; j++)
 			{
 				aout_symbol_t extern_sym;
@@ -709,6 +727,7 @@ int aout_relocate(aout_object_file_t *obj, aout_object_file_t **modules, size_t 
 					if (!(extern_sym.type & AOUT_SET_UNDEFINED))
 					{
 						uint32_t addr;
+						uint32_t patch_val;
 						
 						if (extern_sym.type & AOUT_SET_TEXT)
 							addr = aout_get_text_base(modules[j]) + extern_sym.value;
@@ -719,8 +738,12 @@ int aout_relocate(aout_object_file_t *obj, aout_object_file_t **modules, size_t 
 						else
 							assert(0);
 						
-						obj->text_segment->data[obj->text_relocs->data[i].address] = LOBYTE(addr);
-						obj->text_segment->data[obj->text_relocs->data[i].address + 1] = HIBYTE(addr);
+						if (re.pcrel)
+							patch_val = addr - (obj->text_base + re.address + (uint32_t)patch_size);
+						else
+							patch_val = addr;
+						
+						write_le(obj->text_segment->data + re.address, patch_val, patch_size);
 						symbol_found++;
 					}
 				}
@@ -739,21 +762,27 @@ int aout_relocate(aout_object_file_t *obj, aout_object_file_t **modules, size_t 
 		}
 		else
 		{
-			// Internal relocation
-			uint32_t addr = 0;
+			// Internal relocation: read stored segment-relative value, add base
+			uint8_t *patch_ptr = obj->text_segment->data + re.address;
+			uint32_t stored = read_le(patch_ptr, patch_size);
+			uint32_t base = 0;
+			uint32_t patch_val;
 			
-			if (obj->text_relocs->data[i].index == AOUT_SEG_TEXT)
-				addr = obj->text_base + obj->text_segment->data[obj->text_relocs->data[i].address] + 
-					(obj->text_segment->data[obj->text_relocs->data[i].address + 1] << 8);
-			else if (obj->text_relocs->data[i].index == AOUT_SEG_DATA)
-				addr = obj->data_base + obj->text_segment->data[obj->text_relocs->data[i].address] + 
-					(obj->text_segment->data[obj->text_relocs->data[i].address + 1] << 8);
-			else if (obj->text_relocs->data[i].index == AOUT_SEG_BSS)
-				addr = obj->bss_base + obj->text_segment->data[obj->text_relocs->data[i].address] + 
-					(obj->text_segment->data[obj->text_relocs->data[i].address + 1] << 8);
+			if (re.index == AOUT_SEG_TEXT)
+				base = obj->text_base;
+			else if (re.index == AOUT_SEG_DATA)
+				base = obj->data_base;
+			else if (re.index == AOUT_SEG_BSS)
+				base = obj->bss_base;
 			
-			obj->text_segment->data[obj->text_relocs->data[i].address] = LOBYTE(addr);
-			obj->text_segment->data[obj->text_relocs->data[i].address + 1] = HIBYTE(addr);
+			uint32_t abs_addr = base + stored;
+			
+			if (re.pcrel)
+				patch_val = abs_addr - (obj->text_base + re.address + (uint32_t)patch_size);
+			else
+				patch_val = abs_addr;
+			
+			write_le(patch_ptr, patch_val, patch_size);
 		}
 	}
 	
@@ -1055,8 +1084,14 @@ void aout_dump_text_relocs(aout_object_file_t *obj, FILE *f)
 	{
 		aout_relocation_entry_t re = obj->text_relocs->data[i];
 		if (re.external)
-			fprintf(f, "%04X\tsize: %d (bytes)\tExternal\t%s\n", 
-				re.address, 1 << re.length, obj->symbol_table->data[re.index].name);
+		{
+			if (re.index < obj->symbol_table->size)
+				fprintf(f, "%04X\tsize: %d (bytes)\tExternal\t%s\n",
+					re.address, 1 << re.length, obj->symbol_table->data[re.index].name);
+			else
+				fprintf(f, "%04X\tsize: %d (bytes)\tExternal\t[index %u]\n",
+					re.address, 1 << re.length, re.index);
+		}
 		else
 			fprintf(f, "%04X\tsize: %d (bytes)\tSegment: %s\n", 
 				re.address, 1 << re.length, get_segment_name(re.index));

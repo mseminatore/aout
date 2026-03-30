@@ -48,6 +48,20 @@ enable_testing()
 # Add test
 add_test(NAME aout_tests COMMAND test_aout)
 
+# --- CLI Tools ---
+
+add_executable(dump dump/main.c)
+target_link_libraries(dump aout hash)
+
+add_executable(strip strip/main.c)
+target_link_libraries(strip aout hash)
+
+add_executable(ld ld/main.c)
+target_link_libraries(ld aout hash)
+
+add_executable(ar ar/main.c)
+# ar is standalone - no libaout dependency
+
 # Install targets
 install(TARGETS aout hash
     LIBRARY DESTINATION lib

@@ -19,10 +19,14 @@ TEST_OBJ = test_aout.o
 # Targets
 TEST_BIN = test_aout
 LIB = libaout.a
+TOOLS = dump strip ld ar
 
-.PHONY: all clean test
+.PHONY: all clean test $(TOOLS)
 
-all: $(LIB) $(TEST_BIN)
+all: $(LIB) $(TEST_BIN) $(TOOLS)
+
+$(TOOLS): $(LIB)
+	$(MAKE) -C $@
 
 # Build static library
 $(LIB): $(AOUT_OBJ) $(HASH_OBJ)
@@ -45,6 +49,7 @@ clean:
 	rm -f $(AOUT_OBJ) $(TEST_OBJ) $(HASH_OBJ) $(TEST_MAIN_OBJ)
 	rm -f $(LIB) $(TEST_BIN)
 	rm -f test_output.o
+	for t in $(TOOLS); do $(MAKE) -C $$t clean; done
 
 # Dependencies
 $(AOUT_OBJ): aout.c aout.h hash/hash.h
