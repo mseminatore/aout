@@ -3,6 +3,10 @@
 
 # project files
 test_aout
+ar
+dump
+ld
+strip
 
 # Object files
 *.o
