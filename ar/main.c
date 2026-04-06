@@ -157,7 +157,6 @@ static int ar_skip(FILE *f, long size)
 /* ------------------------------------------------------------------ */
 /* Helper: load an entire file into memory. Caller frees *data.        */
 /* ------------------------------------------------------------------ */
-
 static int load_file(const char *path, uint8_t **data, long *size)
 {
 	FILE *f = fopen(path, "rb");
@@ -176,13 +175,13 @@ static int load_file(const char *path, uint8_t **data, long *size)
 /* ------------------------------------------------------------------ */
 /* Name matching                                                        */
 /* ------------------------------------------------------------------ */
-
 static int name_matches(const char *member_name, char **names, int nnames)
 {
 	int i;
 	const char *base;
 	if (nnames == 0)
 		return 1; /* no filter → match all */
+
 	for (i = 0; i < nnames; i++)
 	{
 		base = strrchr(names[i], '/');
@@ -190,6 +189,7 @@ static int name_matches(const char *member_name, char **names, int nnames)
 		if (strcmp(member_name, base) == 0)
 			return 1;
 	}
+
 	return 0;
 }
 
@@ -237,20 +237,24 @@ static int cmd_replace(const char *archive, char **files, int nfiles, int verbos
 			fprintf(stderr, "error: cannot create temp file: %s\n", strerror(errno));
 			rc = 1; goto done;
 		}
+
 		close(fd);
 	}
 	{
 #endif
 		FILE *out = fopen(tmpname, "wb");
+
 		if (!out)
 		{
 			fprintf(stderr, "error: cannot write temp file: %s\n", strerror(errno));
 			rc = 1; goto done;
 		}
+
 		ar_write_magic(out);
 
 		/* Copy existing members, skipping those being replaced */
 		FILE *in = fopen(archive, "rb");
+
 		if (in && ar_check_magic(in) == 0)
 		{
 			ar_header_t hdr;
@@ -326,6 +330,7 @@ done:
 			free(fdata[i]);
 		free(fdata);
 	}
+
 	free(fsizes);
 	return rc;
 }
@@ -337,11 +342,13 @@ done:
 static int cmd_list(const char *archive, char **names, int nnames, int verbose)
 {
 	FILE *f = fopen(archive, "rb");
+
 	if (!f)
 	{
 		fprintf(stderr, "error: cannot open '%s': %s\n", archive, strerror(errno));
 		return 1;
 	}
+	
 	if (ar_check_magic(f) != 0)
 	{
 		fprintf(stderr, "error: '%s' is not an ar archive\n", archive);
@@ -387,11 +394,13 @@ static int cmd_list(const char *archive, char **names, int nnames, int verbose)
 static int cmd_extract(const char *archive, char **names, int nnames, int verbose)
 {
 	FILE *f = fopen(archive, "rb");
+
 	if (!f)
 	{
 		fprintf(stderr, "error: cannot open '%s': %s\n", archive, strerror(errno));
 		return 1;
 	}
+
 	if (ar_check_magic(f) != 0)
 	{
 		fprintf(stderr, "error: '%s' is not an ar archive\n", archive);
@@ -416,9 +425,11 @@ static int cmd_extract(const char *archive, char **names, int nnames, int verbos
 				ar_skip(f, msize);
 				continue;
 			}
+
 			/* copy data */
 			char buf[4096];
 			long remaining = msize;
+			
 			while (remaining > 0)
 			{
 				size_t chunk = (size_t)(remaining < (long)sizeof(buf) ? remaining : (long)sizeof(buf));
@@ -427,11 +438,14 @@ static int cmd_extract(const char *archive, char **names, int nnames, int verbos
 				fwrite(buf, 1, n, out);
 				remaining -= (long)n;
 			}
+			
 			fclose(out);
+			
 			/* skip even-padding byte */
 			if (msize & 1)
 				fgetc(f);
-			if (verbose)
+			
+				if (verbose)
 				printf("x - %s\n", mname);
 		}
 		else
